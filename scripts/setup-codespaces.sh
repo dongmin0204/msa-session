@@ -5,6 +5,7 @@ PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 YARN_VERSION="4.6.0"
 AWS_REGION="${AWS_DEFAULT_REGION:-ap-northeast-2}"
 USER_BIN="$HOME/.local/bin"
+TOOL_VENV_ROOT="$HOME/.local/share/msa-session"
 
 export PATH="$USER_BIN:$PATH"
 
@@ -21,14 +22,27 @@ command_works() {
   has_command "$1" && "$1" --version >/dev/null 2>&1
 }
 
-ensure_apt_packages() {
-  if ! has_command apt-get; then
+run_root() {
+  if has_command sudo; then
+    sudo "$@"
+  else
+    "$@"
+  fi
+}
+
+ensure_system_packages() {
+  if has_command apt-get; then
+    log "Installing base packages with apt"
+    run_root apt-get update
+    run_root apt-get install -y ca-certificates curl unzip python3 python3-pip python3-venv
     return
   fi
 
-  log "Installing base packages"
-  sudo apt-get update
-  sudo apt-get install -y ca-certificates curl unzip python3 python3-pip python3-venv
+  if has_command apk; then
+    log "Installing base packages with apk"
+    run_root apk add --no-cache ca-certificates curl unzip python3 py3-pip py3-virtualenv
+    return
+  fi
 }
 
 detect_aws_cli_arch() {
@@ -73,8 +87,8 @@ remove_broken_aws_cli() {
   fi
 
   log "Removing broken AWS CLI installation"
-  sudo rm -f /usr/local/bin/aws /usr/local/bin/aws_completer
-  sudo rm -rf /usr/local/aws-cli
+  run_root rm -f /usr/local/bin/aws /usr/local/bin/aws_completer
+  run_root rm -rf /usr/local/aws-cli
 }
 
 install_aws_cli() {
@@ -112,7 +126,7 @@ install_aws_cli() {
     return
   fi
 
-  sudo "$tmp_dir/aws/install" --bin-dir /usr/local/bin --install-dir /usr/local/aws-cli --update
+  run_root "$tmp_dir/aws/install" --bin-dir /usr/local/bin --install-dir /usr/local/aws-cli --update
   rm -rf "$tmp_dir"
   aws --version
 }
@@ -123,31 +137,43 @@ install_aws_cli_fallback() {
     return
   fi
 
-  install_aws_cli_with_pip
+  if has_command apk; then
+    install_aws_cli_with_apk
+    return
+  fi
+
+  install_aws_cli_with_venv
 }
 
 install_aws_cli_with_apt() {
   log "Installing AWS CLI from apt"
-  sudo apt-get update
-  sudo apt-get install -y awscli
+  run_root apt-get update
+  run_root apt-get install -y awscli
 
   verify_aws_cli_fallback
 }
 
-install_aws_cli_with_pip() {
-  log "Installing AWS CLI with pip"
+install_aws_cli_with_apk() {
+  log "Installing AWS CLI from apk"
+  run_root apk add --no-cache aws-cli
+
+  verify_aws_cli_fallback
+}
+
+install_aws_cli_with_venv() {
+  log "Installing AWS CLI in a virtual environment"
 
   if ! has_command python3; then
     echo "python3 is unavailable and AWS CLI v2 installer failed." >&2
     exit 1
   fi
 
-  if ! python3 -m pip --version >/dev/null 2>&1; then
-    python3 -m ensurepip --user --upgrade
-  fi
-
-  python3 -m pip install --user --upgrade awscli
+  local venv_dir
+  venv_dir="$TOOL_VENV_ROOT/awscli"
+  create_python_venv "$venv_dir"
+  "$venv_dir/bin/python" -m pip install --upgrade pip awscli
   mkdir -p "$USER_BIN"
+  ln -sf "$venv_dir/bin/aws" "$USER_BIN/aws"
   append_user_bin_to_shell_path
   verify_aws_cli_fallback
 }
@@ -185,14 +211,45 @@ install_sam_cli() {
     return
   fi
 
-  log "Installing AWS SAM CLI"
-  python3 -m pip install --user --upgrade aws-sam-cli
+  log "Installing AWS SAM CLI in a virtual environment"
 
-  if ! has_command sam; then
-    append_user_bin_to_shell_path
+  if ! has_command python3; then
+    echo "python3 is unavailable and SAM CLI is not installed." >&2
+    exit 1
+  fi
+
+  local venv_dir
+  venv_dir="$TOOL_VENV_ROOT/sam-cli"
+  create_python_venv "$venv_dir"
+  "$venv_dir/bin/python" -m pip install --upgrade pip aws-sam-cli
+  mkdir -p "$USER_BIN"
+  ln -sf "$venv_dir/bin/sam" "$USER_BIN/sam"
+  append_user_bin_to_shell_path
+
+  if ! command_works sam; then
+    echo "SAM CLI installation completed, but sam still cannot run." >&2
+    exit 1
   fi
 
   sam --version
+}
+
+create_python_venv() {
+  local venv_dir="$1"
+  rm -rf "$venv_dir"
+  mkdir -p "$(dirname "$venv_dir")"
+
+  if python3 -m venv "$venv_dir" >/dev/null 2>&1; then
+    return
+  fi
+
+  if python3 -m virtualenv "$venv_dir" >/dev/null 2>&1; then
+    return
+  fi
+
+  echo "Could not create a Python virtual environment." >&2
+  echo "Install python3 venv support or rebuild the Codespace." >&2
+  exit 1
 }
 
 setup_yarn() {
@@ -222,7 +279,7 @@ print_next_steps() {
 main() {
   cd "$PROJECT_ROOT"
 
-  ensure_apt_packages
+  ensure_system_packages
   install_aws_cli
   install_sam_cli
   setup_yarn
