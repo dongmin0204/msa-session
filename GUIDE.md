@@ -78,13 +78,38 @@ CloudFront (CDN)
 
 ## Step 4. Lambda 코드 수정 + 재배포 (10분)
 
-### 4-1. AWS 자격증명 설정
+### 4-1. Codespaces에서 AWS 로그인
 
 ```bash
-aws configure
+aws configure sso
 ```
 
-진행자가 안내하는 Access Key, Secret Key, Region(`ap-northeast-2`)을 입력하세요.
+Codespaces 터미널에서 각자 본인의 AWS 계정으로 로그인합니다.
+
+입력값:
+
+| 항목 | 값 |
+|------|-----|
+| SSO session name | 예: `msa-session` |
+| SSO start URL | 본인 AWS 로그인 포털 URL |
+| SSO region | 관리자가 안내한 SSO Region |
+| CLI default client Region | `ap-northeast-2` |
+| CLI default output format | `json` |
+| CLI profile name | 예: `msa-session` |
+
+브라우저 인증 페이지가 열리면 본인 AWS 계정으로 로그인하고 권한 요청을 승인하세요.
+브라우저가 자동으로 열리지 않으면 터미널에 표시된 URL을 복사해 브라우저에서 열고, 함께 표시된 인증 코드를 입력합니다.
+
+프로필 이름을 `msa-session`으로 만들었다면 현재 터미널에 적용합니다.
+
+```bash
+export AWS_PROFILE=msa-session
+export AWS_DEFAULT_REGION=ap-northeast-2
+aws sso login --profile msa-session
+aws sts get-caller-identity
+```
+
+계정 ID와 ARN이 출력되면 배포 준비가 완료된 것입니다.
 
 ### 4-2. Order Lambda 수정
 

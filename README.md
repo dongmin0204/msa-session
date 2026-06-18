@@ -60,9 +60,11 @@ Step 1. 모놀리식 앱 실행
 Step 2. 모놀리식 장애 체험
 Step 3. 로컬 MSA 앱 실행
 Step 4. MSA 장애 격리 확인
-Step 5. AWS Lambda 배포
-Step 6. Lambda 코드 수정 후 재배포
-Step 7. 리소스 정리
+Step 5. Codespaces에서 AWS 로그인
+Step 6. AWS Lambda 배포
+Step 7. Lambda 코드 수정 후 재배포
+Step 8. AWS에서 장애 격리 확인
+Step 9. 리소스 정리
 ```
 
 ## Step 1. 모놀리식 앱 실행
@@ -194,24 +196,59 @@ curl -X POST http://localhost:4000/api/orders \
 
 확인이 끝나면 추가한 에러 코드를 삭제하고 다시 실행합니다.
 
-## Step 5. AWS 배포 준비
+## Step 5. Codespaces에서 AWS 로그인
 
-AWS 배포 실습을 진행하려면 진행자가 제공한 AWS 자격증명과 Region이 필요합니다.
+AWS 배포 실습은 Codespaces 터미널에서 각자 본인의 AWS 계정으로 로그인한 뒤 진행합니다. 브라우저에서 AWS 로그인을 완료하고, Codespaces의 AWS CLI가 그 로그인 정보를 사용하게 만드는 흐름입니다.
+
+먼저 Codespaces 터미널에서 AWS CLI가 설치되어 있는지 확인합니다.
 
 ```bash
-aws configure
+aws --version
+sam --version
 ```
 
-입력값:
+AWS SSO 또는 IAM Identity Center를 사용하는 계정이면 아래 명령으로 로그인 설정을 시작합니다.
 
-| 항목 | 값 |
+```bash
+aws configure sso
+```
+
+터미널에 표시되는 안내에 따라 진행합니다.
+
+| 항목 | 입력값 |
 | --- | --- |
-| AWS Access Key ID | 진행자가 제공 |
-| AWS Secret Access Key | 진행자가 제공 |
-| Default region name | `ap-northeast-2` |
-| Default output format | `json` |
+| SSO session name | 원하는 이름. 예: `msa-session` |
+| SSO start URL | 본인 AWS 로그인 포털 URL |
+| SSO region | 관리자가 안내한 SSO Region |
+| CLI default client Region | `ap-northeast-2` |
+| CLI default output format | `json` |
+| CLI profile name | 원하는 이름. 예: `msa-session` |
 
-배포 전에 템플릿을 빌드합니다.
+명령 실행 중 브라우저 인증 페이지가 열리면 본인 AWS 계정으로 로그인하고 권한 요청을 승인합니다.
+브라우저가 자동으로 열리지 않으면 터미널에 표시된 URL을 복사해 브라우저에서 열고, 함께 표시된 인증 코드를 입력합니다.
+
+프로필 이름을 `msa-session`으로 만들었다면, 현재 터미널에서 이 프로필을 사용하도록 설정합니다.
+
+```bash
+export AWS_PROFILE=msa-session
+export AWS_DEFAULT_REGION=ap-northeast-2
+```
+
+이미 SSO 설정을 마친 Codespace에서 다시 로그인해야 할 때는 아래 명령을 사용합니다.
+
+```bash
+aws sso login --profile msa-session
+```
+
+로그인이 잘 되었는지 확인합니다.
+
+```bash
+aws sts get-caller-identity
+```
+
+계정 ID와 사용자/역할 ARN이 출력되면 배포 준비가 끝난 것입니다.
+
+배포 전에 SAM 템플릿을 빌드합니다.
 
 ```bash
 sam build
