@@ -14,7 +14,7 @@
 
 ### Codespaces에서 열기
 
-[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/dongmin0204/msa-session)
+[Open in GitHub Codespaces](https://codespaces.new/dongmin0204/msa-session)
 
 Codespaces를 사용하면 Node.js, AWS CLI, SAM CLI가 포함된 개발 환경에서 바로 시작할 수 있습니다.
 
@@ -35,12 +35,14 @@ yarn install
 
 필요한 버전은 다음과 같습니다.
 
-| 도구 | 용도 |
-| --- | --- |
-| Node.js 20 | 프론트엔드와 로컬 API 서버 실행 |
-| Yarn 4 | 의존성 설치와 실행 스크립트 관리. `setup-codespaces.sh`에서 Corepack으로 활성화 |
-| AWS CLI | AWS 로그인과 배포 권한 확인. `setup-codespaces.sh`에서 누락 시 설치 |
-| SAM CLI | Lambda/API Gateway 배포 |
+
+| 도구         | 용도                                                         |
+| ---------- | ---------------------------------------------------------- |
+| Node.js 20 | 프론트엔드와 로컬 API 서버 실행                                        |
+| Yarn 4     | 의존성 설치와 실행 스크립트 관리. `setup-codespaces.sh`에서 Corepack으로 활성화 |
+| AWS CLI    | AWS 로그인과 배포 권한 확인. `setup-codespaces.sh`에서 누락 시 설치         |
+| SAM CLI    | Lambda/API Gateway 배포                                      |
+
 
 ## 프로젝트 구조
 
@@ -106,7 +108,7 @@ API만 빠르게 확인하려면 다른 터미널에서 실행합니다.
 
 ## Step 2. 모놀리식 장애 체험
 
-[monolith/server.mjs](./monolith/server.mjs)에서 주문 API를 찾습니다.
+[monolith/server.mjs](./monolith/server.mjs)에서 categori API를 찾습니다.
 
 ```javascript
 app.post('/api/orders', async (c) => {
@@ -143,12 +145,14 @@ yarn msa
 
 실행되는 구성은 다음과 같습니다.
 
-| 구성요소 | 주소 | 역할 |
-| --- | --- | --- |
-| Catalog Service | `http://localhost:3001` | 카테고리, 상품 조회 |
-| Order Service | `http://localhost:3002` | 주문 생성 |
-| API Gateway | `http://localhost:4000` | `/api/catalog/*`, `/api/orders/*` 라우팅 |
-| Frontend | `http://localhost:5173` | 사용자 화면 |
+
+| 구성요소            | 주소                      | 역할                                    |
+| --------------- | ----------------------- | ------------------------------------- |
+| Catalog Service | `http://localhost:3001` | 카테고리, 상품 조회                           |
+| Order Service   | `http://localhost:3002` | 주문 생성                                 |
+| API Gateway     | `http://localhost:4000` | `/api/catalog/*`, `/api/orders/*` 라우팅 |
+| Frontend        | `http://localhost:5173` | 사용자 화면                                |
+
 
 브라우저에서는 이전과 동일하게 접속합니다.
 
@@ -217,7 +221,7 @@ sam --version
 ```
 
 > **주의**: Codespaces 환경에서는 `aws login`이나 `aws configure sso`의 브라우저 콜백(`127.0.0.1`)이 동작하지 않습니다.
-> Codespaces에서는 **환경 변수** 또는 **`aws configure`로 Access Key를 직접 입력**하는 방법을 사용하세요.
+> Codespaces에서는 **환경 변수** 또는 `**aws configure`로 Access Key를 직접 입력**하는 방법을 사용하세요.
 
 ### 방법 A. 환경 변수로 설정 (가장 빠름)
 
@@ -235,12 +239,14 @@ export AWS_DEFAULT_REGION="ap-northeast-2"
 aws configure
 ```
 
-| 항목 | 입력값 |
-| --- | --- |
-| AWS Access Key ID | 진행자가 배포한 키 |
-| AWS Secret Access Key | 진행자가 배포한 시크릿 |
-| Default region name | `ap-northeast-2` |
-| Default output format | `json` |
+
+| 항목                    | 입력값              |
+| --------------------- | ---------------- |
+| AWS Access Key ID     | 진행자가 배포한 키       |
+| AWS Secret Access Key | 진행자가 배포한 시크릿     |
+| Default region name   | `ap-northeast-2` |
+| Default output format | `json`           |
+
 
 이 방법은 `~/.aws/credentials`에 저장되므로 터미널을 다시 열어도 유지됩니다.
 
@@ -253,14 +259,16 @@ aws configure
 aws configure sso
 ```
 
-| 항목 | 입력값 |
-| --- | --- |
-| SSO session name | 원하는 이름. 예: `msa-session` |
-| SSO start URL | 본인 AWS 로그인 포털 URL |
-| SSO region | SSO Region |
-| CLI default client Region | `ap-northeast-2` |
-| CLI default output format | `json` |
-| CLI profile name | 예: `msa-session` |
+
+| 항목                        | 입력값                      |
+| ------------------------- | ------------------------ |
+| SSO session name          | 원하는 이름. 예: `msa-session` |
+| SSO start URL             | 본인 AWS 로그인 포털 URL        |
+| SSO region                | SSO Region               |
+| CLI default client Region | `ap-northeast-2`         |
+| CLI default output format | `json`                   |
+| CLI profile name          | 예: `msa-session`         |
+
 
 설정 후:
 
@@ -419,26 +427,30 @@ sam deploy
 
 ## 자주 쓰는 명령어
 
-| 명령어 | 설명 |
-| --- | --- |
-| `yarn monolith` | 모놀리식 모드 실행 |
-| `yarn msa` | 로컬 MSA 모드 실행 |
-| `yarn build` | 프론트엔드 프로덕션 빌드 |
-| `./scripts/test-api.sh http://localhost:5173` | 모놀리식 API 테스트 |
+
+| 명령어                                           | 설명                     |
+| --------------------------------------------- | ---------------------- |
+| `yarn monolith`                               | 모놀리식 모드 실행             |
+| `yarn msa`                                    | 로컬 MSA 모드 실행           |
+| `yarn build`                                  | 프론트엔드 프로덕션 빌드          |
+| `./scripts/test-api.sh http://localhost:5173` | 모놀리식 API 테스트           |
 | `./scripts/test-api.sh http://localhost:4000` | 로컬 MSA Gateway API 테스트 |
-| `sam build` | Lambda 배포 패키지 빌드 |
-| `sam deploy` | AWS 배포 |
-| `./scripts/cleanup.sh` | AWS 리소스 정리 |
+| `sam build`                                   | Lambda 배포 패키지 빌드       |
+| `sam deploy`                                  | AWS 배포                 |
+| `./scripts/cleanup.sh`                        | AWS 리소스 정리             |
+
 
 ## 실습에서 사용하는 AWS 서비스
 
-| 서비스 | 역할 |
-| --- | --- |
-| Lambda | Catalog Service와 Order Service 실행 |
-| API Gateway | `/api/catalog/*`, `/api/orders/*` 라우팅 |
-| CloudFormation | SAM 템플릿 기반 인프라 생성/수정/삭제 |
-| S3 | 프론트엔드 정적 파일 저장에 활용 가능 |
-| CloudFront | 정적 파일과 API를 하나의 HTTPS 엔드포인트로 제공할 때 활용 가능 |
-| DynamoDB | 주문 데이터 저장소로 확장 가능 |
+
+| 서비스            | 역할                                       |
+| -------------- | ---------------------------------------- |
+| Lambda         | Catalog Service와 Order Service 실행        |
+| API Gateway    | `/api/catalog/*`, `/api/orders/*` 라우팅    |
+| CloudFormation | SAM 템플릿 기반 인프라 생성/수정/삭제                  |
+| S3             | 프론트엔드 정적 파일 저장에 활용 가능                    |
+| CloudFront     | 정적 파일과 API를 하나의 HTTPS 엔드포인트로 제공할 때 활용 가능 |
+| DynamoDB       | 주문 데이터 저장소로 확장 가능                        |
+
 
 더 자세한 진행자용 설명은 [GUIDE.md](./GUIDE.md)를 참고하세요.

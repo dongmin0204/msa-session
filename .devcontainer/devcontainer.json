@@ -23,10 +23,10 @@
   "postCreateCommand": "sudo ./scripts/setup-codespaces.sh",
   "forwardPorts": [5173, 3001, 3002, 4000],
   "portsAttributes": {
-    "5173": { "label": "Frontend" },
-    "3001": { "label": "Catalog Service" },
-    "3002": { "label": "Order Service" },
-    "4000": { "label": "API Gateway" }
+    "5173": { "label": "Frontend", "onAutoForward": "openBrowserOnce" },
+    "3001": { "label": "Catalog Service", "onAutoForward": "notify" },
+    "3002": { "label": "Order Service", "onAutoForward": "notify" },
+    "4000": { "label": "API Gateway", "onAutoForward": "notify" }
   },
   "containerEnv": {
     "AWS_DEFAULT_REGION": "ap-northeast-2",
