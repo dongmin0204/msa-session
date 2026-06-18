@@ -4,6 +4,9 @@ set -euo pipefail
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 YARN_VERSION="4.6.0"
 AWS_REGION="${AWS_DEFAULT_REGION:-ap-northeast-2}"
+USER_BIN="$HOME/.local/bin"
+
+export PATH="$USER_BIN:$PATH"
 
 log() {
   echo ""
@@ -96,16 +99,16 @@ install_aws_cli() {
     echo "AWS CLI archive did not contain an executable for architecture: $arch" >&2
     find "$tmp_dir/aws" -maxdepth 3 -type f | sort >&2
     rm -rf "$tmp_dir"
-    install_aws_cli_with_apt
+    install_aws_cli_fallback
     return
   fi
 
   if ! "$tmp_dir/aws/dist/aws" --version >/dev/null 2>&1; then
-    echo "Downloaded AWS CLI v2 binary cannot run in this Codespace. Falling back to apt package." >&2
+    echo "Downloaded AWS CLI v2 binary cannot run in this Codespace. Falling back to package install." >&2
     echo "Architecture: $arch" >&2
     uname -a >&2
     rm -rf "$tmp_dir"
-    install_aws_cli_with_apt
+    install_aws_cli_fallback
     return
   fi
 
@@ -114,18 +117,56 @@ install_aws_cli() {
   aws --version
 }
 
-install_aws_cli_with_apt() {
-  if ! has_command apt-get; then
-    echo "apt-get is unavailable and AWS CLI v2 installer failed." >&2
-    exit 1
+install_aws_cli_fallback() {
+  if has_command apt-get; then
+    install_aws_cli_with_apt
+    return
   fi
 
+  install_aws_cli_with_pip
+}
+
+install_aws_cli_with_apt() {
   log "Installing AWS CLI from apt"
   sudo apt-get update
   sudo apt-get install -y awscli
 
+  verify_aws_cli_fallback
+}
+
+install_aws_cli_with_pip() {
+  log "Installing AWS CLI with pip"
+
+  if ! has_command python3; then
+    echo "python3 is unavailable and AWS CLI v2 installer failed." >&2
+    exit 1
+  fi
+
+  if ! python3 -m pip --version >/dev/null 2>&1; then
+    python3 -m ensurepip --user --upgrade
+  fi
+
+  python3 -m pip install --user --upgrade awscli
+  mkdir -p "$USER_BIN"
+  append_user_bin_to_shell_path
+  verify_aws_cli_fallback
+}
+
+append_user_bin_to_shell_path() {
+  local path_line='export PATH="$HOME/.local/bin:$PATH"'
+
+  if [ -f "$HOME/.bashrc" ] && ! grep -Fq "$path_line" "$HOME/.bashrc"; then
+    echo "$path_line" >> "$HOME/.bashrc"
+  fi
+
+  if [ -f "$HOME/.zshrc" ] && ! grep -Fq "$path_line" "$HOME/.zshrc"; then
+    echo "$path_line" >> "$HOME/.zshrc"
+  fi
+}
+
+verify_aws_cli_fallback() {
   if ! command_works aws; then
-    echo "AWS CLI apt installation completed, but aws still cannot run." >&2
+    echo "AWS CLI fallback installation completed, but aws still cannot run." >&2
     exit 1
   fi
 
@@ -133,7 +174,7 @@ install_aws_cli_with_apt() {
 
   if ! aws configure sso help >/dev/null 2>&1; then
     echo ""
-    echo "WARNING: This AWS CLI package may not support 'aws configure sso'."
+    echo "WARNING: This AWS CLI install may not support 'aws configure sso'."
     echo "If SSO login is required, rebuild the Codespace so the devcontainer aws-cli feature can install AWS CLI v2."
   fi
 }
@@ -148,8 +189,7 @@ install_sam_cli() {
   python3 -m pip install --user --upgrade aws-sam-cli
 
   if ! has_command sam; then
-    echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$HOME/.bashrc"
-    export PATH="$HOME/.local/bin:$PATH"
+    append_user_bin_to_shell_path
   fi
 
   sam --version
