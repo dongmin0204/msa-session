@@ -95,19 +95,47 @@ install_aws_cli() {
   if [ ! -x "$tmp_dir/aws/dist/aws" ]; then
     echo "AWS CLI archive did not contain an executable for architecture: $arch" >&2
     find "$tmp_dir/aws" -maxdepth 3 -type f | sort >&2
-    exit 1
+    rm -rf "$tmp_dir"
+    install_aws_cli_with_apt
+    return
   fi
 
   if ! "$tmp_dir/aws/dist/aws" --version >/dev/null 2>&1; then
-    echo "Downloaded AWS CLI binary cannot run in this Codespace." >&2
+    echo "Downloaded AWS CLI v2 binary cannot run in this Codespace. Falling back to apt package." >&2
     echo "Architecture: $arch" >&2
     uname -a >&2
-    exit 1
+    rm -rf "$tmp_dir"
+    install_aws_cli_with_apt
+    return
   fi
 
   sudo "$tmp_dir/aws/install" --bin-dir /usr/local/bin --install-dir /usr/local/aws-cli --update
   rm -rf "$tmp_dir"
   aws --version
+}
+
+install_aws_cli_with_apt() {
+  if ! has_command apt-get; then
+    echo "apt-get is unavailable and AWS CLI v2 installer failed." >&2
+    exit 1
+  fi
+
+  log "Installing AWS CLI from apt"
+  sudo apt-get update
+  sudo apt-get install -y awscli
+
+  if ! command_works aws; then
+    echo "AWS CLI apt installation completed, but aws still cannot run." >&2
+    exit 1
+  fi
+
+  aws --version
+
+  if ! aws configure sso help >/dev/null 2>&1; then
+    echo ""
+    echo "WARNING: This AWS CLI package may not support 'aws configure sso'."
+    echo "If SSO login is required, rebuild the Codespace so the devcontainer aws-cli feature can install AWS CLI v2."
+  fi
 }
 
 install_sam_cli() {
