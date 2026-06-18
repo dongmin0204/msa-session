@@ -252,8 +252,42 @@ create_python_venv() {
   exit 1
 }
 
+install_node() {
+  if has_command node; then
+    node --version
+    return
+  fi
+
+  log "Installing Node.js 20"
+
+  if has_command apt-get; then
+    curl -fsSL https://deb.nodesource.com/setup_20.x | run_root bash -
+    run_root apt-get install -y nodejs
+  elif has_command apk; then
+    run_root apk add --no-cache nodejs npm
+  else
+    echo "Cannot install Node.js automatically. Install Node.js 20 manually." >&2
+    exit 1
+  fi
+
+  node --version
+}
+
 setup_yarn() {
   log "Setting up Yarn"
+
+  if ! has_command corepack; then
+    if has_command npm; then
+      npm install -g corepack
+    else
+      echo "npm not found, installing corepack manually..."
+      curl -fsSL "https://registry.npmjs.org/corepack/-/corepack-0.31.0.tgz" -o /tmp/corepack.tgz
+      mkdir -p /tmp/corepack-pkg && tar -xzf /tmp/corepack.tgz -C /tmp/corepack-pkg
+      run_root node /tmp/corepack-pkg/package/dist/corepack.js enable
+      rm -rf /tmp/corepack.tgz /tmp/corepack-pkg
+    fi
+  fi
+
   corepack enable
   corepack prepare "yarn@${YARN_VERSION}" --activate
   yarn --version
@@ -293,6 +327,7 @@ main() {
   cd "$PROJECT_ROOT"
 
   ensure_system_packages
+  install_node
   install_aws_cli
   install_sam_cli
   setup_yarn
