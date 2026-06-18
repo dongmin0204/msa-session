@@ -10,9 +10,9 @@
     "msa:gateway": "node microservices/gateway.mjs",
     "msa:frontend": "vite --config vite.msa.mts",
     "build": "vite build --config vite.build.mts",
-    "deploy": "./scripts/deploy.sh",
-    "deploy:infra": "./scripts/deploy-infra.sh",
-    "cleanup": "./scripts/cleanup.sh"
+    "deploy": "./scripts/04-deploy.sh",
+    "deploy:infra": "./scripts/03-deploy-infra.sh",
+    "cleanup": "./scripts/09-cleanup.sh"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",

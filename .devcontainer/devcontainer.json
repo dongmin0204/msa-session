@@ -20,7 +20,7 @@
       }
     }
   },
-  "postCreateCommand": "sudo ./scripts/setup-codespaces.sh",
+  "postCreateCommand": "sudo ./scripts/01-setup-codespaces.sh",
   "forwardPorts": [5173, 3001, 3002, 4000],
   "portsAttributes": {
     "5173": { "label": "Frontend", "onAutoForward": "openBrowserOnce" },

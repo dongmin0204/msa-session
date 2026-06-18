@@ -36,7 +36,7 @@ echo ""
 
 # 3. CatalogTable 초기 데이터 투입
 echo "[3/5] CatalogTable 데이터 시드..."
-bash "$(dirname "$0")/seed-catalog.sh"
+bash "$(dirname "$0")/05-seed-catalog.sh"
 echo ""
 
 # 4. 프론트엔드 빌드 + S3 업로드

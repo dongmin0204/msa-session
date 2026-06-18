@@ -16,4 +16,4 @@ TABLE=$(aws cloudformation describe-stacks \
   --output text --region "$REGION")
 
 echo "📦 CatalogTable 시드: $TABLE"
-CATALOG_TABLE="$TABLE" node "$SCRIPT_DIR/seed-catalog.mjs"
+CATALOG_TABLE="$TABLE" node "$SCRIPT_DIR/05-seed-catalog.mjs"

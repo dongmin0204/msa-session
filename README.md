@@ -19,7 +19,7 @@
 Codespace가 열리면 `.devcontainer`의 설정에 따라 Node.js, AWS CLI, SAM CLI, Docker가 자동 설치됩니다. 추가로 `postCreateCommand`가 아래 스크립트를 실행합니다.
 
 ```bash
-./scripts/setup-codespaces.sh
+./scripts/01-setup-codespaces.sh
 ```
 
 스크립트가 끝나면 터미널에 설치된 도구 버전이 출력됩니다. 자동 설치가 실패하면 같은 명령을 다시 실행하세요.
@@ -33,7 +33,7 @@ yarn install
 | 도구 | 용도 |
 | --- | --- |
 | Node.js 20 | 프론트엔드와 로컬 API 서버 실행 |
-| Yarn 4 | 의존성 설치. `setup-codespaces.sh`에서 Corepack으로 활성화 |
+| Yarn 4 | 의존성 설치. `01-setup-codespaces.sh`에서 Corepack으로 활성화 |
 | AWS CLI v2 | AWS 자격증명 설정과 리소스 확인 |
 | SAM CLI | Lambda + API Gateway 빌드/배포 |
 
@@ -57,11 +57,11 @@ yarn install
 ├── src/                       # React 프론트엔드 (tosslib 디자인 시스템)
 ├── public/images/             # 상품 이미지
 ├── scripts/
-│   ├── setup-codespaces.sh    # Codespace 환경 설치
-│   ├── deploy.sh              # AWS 배포 (학생별 스택 자동 분리)
-│   ├── cleanup.sh             # AWS 리소스 정리
-│   ├── seed-catalog.sh        # DynamoDB 초기 데이터 투입
-│   └── test-api.sh            # API 테스트
+│   ├── 01-setup-codespaces.sh  # Codespace 환경 설치
+│   ├── 04-deploy.sh           # AWS 배포 (학생별 스택 자동 분리)
+│   ├── 05-seed-catalog.sh     # DynamoDB 초기 데이터 투입
+│   ├── 08-test-api.sh         # API 테스트
+│   └── 09-cleanup.sh          # AWS 리소스 정리
 ├── template.yaml              # SAM 템플릿 (Lambda, API Gateway, DynamoDB, S3, CloudFront)
 ├── samconfig.toml             # SAM 배포 설정
 └── GUIDE.md                   # 진행자용 상세 가이드
@@ -114,7 +114,7 @@ http://localhost:5173
 API만 확인하려면 다른 터미널에서 실행합니다.
 
 ```bash
-./scripts/test-api.sh http://localhost:5173
+./scripts/08-test-api.sh http://localhost:5173
 ```
 
 > 이 단계에서 백엔드는 `monolith/server.mjs` **한 파일**입니다.
@@ -171,7 +171,7 @@ yarn msa
 브라우저에서 `http://localhost:5173`을 열어봅니다. Step 1과 **동일한 화면**이 보입니다.
 
 ```bash
-./scripts/test-api.sh http://localhost:4000
+./scripts/08-test-api.sh http://localhost:4000
 ```
 
 > 사용자 입장에서는 차이가 없습니다.
@@ -261,7 +261,7 @@ aws sts get-caller-identity
 배포 스크립트를 실행합니다. 스크립트가 IAM 사용자 이름(예: `msa-student-07`)을 자동 감지하여 **본인 전용 스택**(`msa-coffee-student-07`)을 생성합니다. 다른 학생과 충돌하지 않습니다.
 
 ```bash
-./scripts/deploy.sh
+./scripts/04-deploy.sh
 ```
 
 > `.aws-sam/build` 권한 에러가 나면 `sudo rm -rf .aws-sam` 후 다시 실행하세요.
@@ -299,15 +299,15 @@ export API_URL="https://xxxxxxxxxx.execute-api.ap-northeast-2.amazonaws.com/Prod
 카탈로그 데이터를 DynamoDB에 투입합니다. (CatalogTable이 비어있으면 상품이 안 보입니다)
 
 ```bash
-./scripts/seed-catalog.sh msa-coffee-student-XX
+./scripts/05-seed-catalog.sh msa-coffee-student-XX
 ```
 
-> `msa-coffee-student-XX` 부분을 본인의 스택 이름으로 바꾸세요. deploy.sh 출력에 표시됩니다.
+> `msa-coffee-student-XX` 부분을 본인의 스택 이름으로 바꾸세요. 04-deploy.sh 출력에 표시됩니다.
 
 시드 완료 후 API를 테스트합니다.
 
 ```bash
-./scripts/test-api.sh "$API_URL"
+./scripts/08-test-api.sh "$API_URL"
 ```
 
 또는 개별 확인:
@@ -350,7 +350,7 @@ return { statusCode: 200, headers, body: JSON.stringify({ orderId, message: '주
 재배포합니다.
 
 ```bash
-./scripts/deploy.sh
+./scripts/04-deploy.sh
 ```
 
 > Lambda 코드만 변경했으므로 **~1분**이면 반영됩니다.
@@ -382,7 +382,7 @@ throw new Error('Order Service 장애 발생!');
 재배포합니다.
 
 ```bash
-./scripts/deploy.sh
+./scripts/04-deploy.sh
 ```
 
 Catalog API와 Order API를 각각 확인합니다.
@@ -407,7 +407,7 @@ curl -X POST "$API_URL/api/orders" \
 확인이 끝나면 에러 코드를 삭제하고 복구합니다.
 
 ```bash
-./scripts/deploy.sh
+./scripts/04-deploy.sh
 ```
 
 ---
@@ -417,7 +417,7 @@ curl -X POST "$API_URL/api/orders" \
 실습이 끝나면 본인 스택의 AWS 리소스를 정리합니다.
 
 ```bash
-./scripts/cleanup.sh
+./scripts/09-cleanup.sh
 ```
 
 스크립트가 본인 IAM 사용자 이름을 감지하여 **본인 스택만** 삭제합니다.
@@ -442,10 +442,10 @@ curl -X POST "$API_URL/api/orders" \
 | `yarn msa` | 로컬 MSA 모드 실행 |
 | `aws configure` | AWS 자격증명 설정 |
 | `aws sts get-caller-identity` | 로그인 확인 |
-| `./scripts/deploy.sh` | AWS 배포 (빌드 + 배포, 학생별 스택 자동 분리) |
-| `./scripts/seed-catalog.sh 스택이름` | DynamoDB에 카탈로그 데이터 투입 |
-| `./scripts/test-api.sh URL` | API 테스트 |
-| `./scripts/cleanup.sh` | 본인 AWS 리소스 정리 |
+| `./scripts/04-deploy.sh` | AWS 배포 (빌드 + 배포, 학생별 스택 자동 분리) |
+| `./scripts/05-seed-catalog.sh 스택이름` | DynamoDB에 카탈로그 데이터 투입 |
+| `./scripts/08-test-api.sh URL` | API 테스트 |
+| `./scripts/09-cleanup.sh` | 본인 AWS 리소스 정리 |
 | `yarn build` | 프론트엔드 프로덕션 빌드 |
 
 ## 트러블슈팅
@@ -455,7 +455,7 @@ curl -X POST "$API_URL/api/orders" \
 | `sam build` 권한 에러 (`not writable`) | `sudo rm -rf .aws-sam` 후 재실행 |
 | `aws login` 에서 `127.0.0.1 연결 거부` | Codespaces에서는 `aws configure`만 사용 |
 | `sam deploy` 에서 `ROLLBACK_COMPLETE` | `aws cloudformation delete-stack --stack-name 스택이름 --region ap-northeast-2` 후 재배포 |
-| 카탈로그 API 응답이 빈 배열 | `./scripts/seed-catalog.sh 스택이름` 실행 |
+| 카탈로그 API 응답이 빈 배열 | `./scripts/05-seed-catalog.sh 스택이름` 실행 |
 | CloudFront URL에서 `Access Denied` | `yarn build && aws s3 sync dist/ s3://버킷이름/ --delete --region ap-northeast-2` |
 
 ## 배포되는 AWS 아키텍처

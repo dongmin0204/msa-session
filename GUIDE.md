@@ -8,7 +8,7 @@
 Codespace가 처음 열릴 때 `.devcontainer/devcontainer.json`의 `postCreateCommand`가 아래 스크립트를 자동 실행합니다.
 
 ```bash
-./scripts/setup-codespaces.sh
+./scripts/01-setup-codespaces.sh
 ```
 
 이 스크립트는 Yarn, AWS CLI, SAM CLI, 프로젝트 의존성을 준비합니다. 자동 설치가 실패했거나 참가자의 터미널에서 도구가 인식되지 않으면 같은 명령을 다시 실행하세요.
