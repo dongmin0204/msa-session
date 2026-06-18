@@ -91,32 +91,30 @@ CloudFront (CDN)
 
 ### 4-1. Codespaces에서 AWS 로그인
 
+진행자가 배포한 Access Key를 환경 변수로 설정합니다.
+
 ```bash
-aws configure sso
+export AWS_ACCESS_KEY_ID="여기에_키_붙여넣기"
+export AWS_SECRET_ACCESS_KEY="여기에_시크릿_붙여넣기"
+export AWS_DEFAULT_REGION="ap-northeast-2"
 ```
 
-Codespaces 터미널에서 각자 본인의 AWS 계정으로 로그인합니다.
-
-입력값:
-
-| 항목 | 값 |
-|------|-----|
-| SSO session name | 예: `msa-session` |
-| SSO start URL | 본인 AWS 로그인 포털 URL |
-| SSO region | 관리자가 안내한 SSO Region |
-| CLI default client Region | `ap-northeast-2` |
-| CLI default output format | `json` |
-| CLI profile name | 예: `msa-session` |
-
-브라우저 인증 페이지가 열리면 본인 AWS 계정으로 로그인하고 권한 요청을 승인하세요.
-브라우저가 자동으로 열리지 않으면 터미널에 표시된 URL을 복사해 브라우저에서 열고, 함께 표시된 인증 코드를 입력합니다.
-
-프로필 이름을 `msa-session`으로 만들었다면 현재 터미널에 적용합니다.
+또는 영구 저장하려면:
 
 ```bash
-export AWS_PROFILE=msa-session
-export AWS_DEFAULT_REGION=ap-northeast-2
-aws sso login --profile msa-session
+aws configure
+# Access Key ID → 진행자가 배포한 키
+# Secret Access Key → 진행자가 배포한 시크릿
+# Region → ap-northeast-2
+# Output → json
+```
+
+> Codespaces에서는 `aws login`이나 `aws configure sso`가 동작하지 않습니다 (localhost 콜백 불가).
+> 반드시 Access Key를 직접 입력하세요.
+
+로그인 확인:
+
+```bash
 aws sts get-caller-identity
 ```
 
