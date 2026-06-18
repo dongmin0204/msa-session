@@ -34,34 +34,7 @@ yarn monolith
 
 ---
 
-## Step 2. 모놀리식의 문제 체험하기 (5분)
-
-`monolith/server.mjs` 파일을 열고, 주문 API를 찾으세요:
-
-```javascript
-app.post('/api/orders', async (c) => {
-```
-
-이 함수의 **첫 줄에** 아래 코드를 추가하세요:
-
-```javascript
-  throw new Error('💥 주문 서비스에 버그 발생!');
-```
-
-저장하고, 브라우저를 새로고침하세요.
-
-**무슨 일이 벌어졌나요?**
-- [ ] 메뉴 목록도 안 보인다!
-- [ ] 주문뿐 아니라 **전체 앱이 죽었다**
-
-> 💡 **이게 모놀리식의 문제입니다.**
-> 주문 기능 하나가 고장났는데, 메뉴 조회까지 같이 죽어버렸습니다.
-
-`Ctrl+C`로 서버를 종료하고, 추가한 throw 줄을 **삭제**하세요.
-
----
-
-## Step 3. AWS에 배포된 MSA 확인하기 (5분)
+## Step 2. AWS에 배포된 MSA 확인하기 (5분)
 
 진행자가 공유한 **CloudFront URL**을 브라우저에서 열어보세요:
 
@@ -87,9 +60,9 @@ CloudFront (CDN)
 
 ---
 
-## Step 4. Lambda 코드 수정 + 재배포 (10분)
+## Step 3. Lambda 코드 수정 + 재배포 (10분)
 
-### 4-1. Codespaces에서 AWS 로그인
+### 3-1. Codespaces에서 AWS 로그인
 
 진행자가 배포한 Access Key를 환경 변수로 설정합니다.
 
@@ -120,7 +93,7 @@ aws sts get-caller-identity
 
 계정 ID와 ARN이 출력되면 배포 준비가 완료된 것입니다.
 
-### 4-2. Order Lambda 수정
+### 3-2. Order Lambda 수정
 
 `lambda/order-service/index.mjs`를 열고, 주문 성공 응답을 수정해보세요:
 
@@ -132,7 +105,7 @@ return { statusCode: 200, headers, body: JSON.stringify({ orderId }) };
 return { statusCode: 200, headers, body: JSON.stringify({ orderId, message: '☕ 주문 감사합니다!' }) };
 ```
 
-### 4-3. 배포
+### 3-3. 배포
 
 ```bash
 sam build && sam deploy
@@ -141,7 +114,7 @@ sam build && sam deploy
 > Lambda 코드만 변경했으므로 **~1분**이면 배포 완료됩니다.
 > (CloudFront, S3, DynamoDB는 이미 있으므로 건드리지 않습니다)
 
-### 4-4. 확인
+### 3-4. 확인
 
 ```bash
 # API Gateway URL로 직접 테스트
@@ -159,48 +132,7 @@ curl -X POST $API_URL/api/orders \
 
 ---
 
-## Step 5. 장애 격리 체험 (5분)
-
-Order Lambda에 의도적 에러를 넣어봅시다.
-
-`lambda/order-service/index.mjs`의 handler 함수 **맨 첫 줄**에:
-
-```javascript
-  throw new Error('💥 Order Service 장애 발생!');
-```
-
-재배포:
-
-```bash
-sam build && sam deploy
-```
-
-테스트:
-
-```bash
-# Catalog — 정상! ✅
-curl $API_URL/api/catalog/categories
-curl $API_URL/api/catalog/items
-
-# 주문 — 에러! ❌
-curl -X POST $API_URL/api/orders \
-  -H "Content-Type: application/json" \
-  -d '{"totalPrice":4500,"items":[{"itemId":1,"quantity":1,"options":[{"optionId":1,"labels":["HOT"]}]}]}'
-```
-
-**확인할 것:**
-- [ ] 카테고리/상품 조회는 **정상** ✅
-- [ ] 주문만 에러 ❌
-
-> 🎉 **이게 MSA의 장애 격리입니다!**
-> Step 2에서는 하나가 죽으니 전부 죽었는데,
-> MSA에서는 Order가 죽어도 Catalog은 멀쩡합니다.
-
-에러 코드를 **삭제**하고 `sam build && sam deploy`로 복구하세요.
-
----
-
-## Step 6. 정리 + 다음 단계 (5분)
+## Step 4. 정리 + 다음 단계 (5분)
 
 ### 오늘 쓴 AWS 서비스
 
@@ -218,7 +150,6 @@ CloudFormation ─ sam deploy로 전부 한 번에 생성/삭제
 | 모놀리식 | MSA (Lambda) |
 |---------|-------------|
 | 한 파일에 모든 기능 | 기능별로 Lambda 분리 |
-| 하나 죽으면 전부 죽음 | 하나 죽어도 나머지 정상 |
 | 전체 재배포 필요 | 변경된 Lambda만 재배포 (~1분) |
 | 서버 직접 관리 | AWS가 알아서 실행 |
 

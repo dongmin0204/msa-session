@@ -2,13 +2,12 @@
 
 커피 주문 앱으로 모놀리식 구조와 마이크로서비스 구조의 차이를 실습합니다.
 
-모든 API가 하나의 서버에서 동작하는 모놀리식 앱을 실행해보고, 같은 앱을 Catalog Service와 Order Service로 분리한 뒤 AWS Lambda에 배포하여 독립 배포와 장애 격리를 직접 체험합니다.
+모든 API가 하나의 서버에서 동작하는 모놀리식 앱을 실행해보고, 같은 앱을 Catalog Service와 Order Service로 분리한 뒤 AWS Lambda에 배포하여 독립 배포를 직접 체험합니다.
 
 ## 실습 목표
 
-1. 모놀리식에서 하나의 기능에 장애가 생기면 전체 앱이 죽는 것을 확인합니다.
-2. 서비스를 분리하면 장애가 격리되는 것을 확인합니다.
-3. AWS Lambda + API Gateway로 서버리스 MSA를 배포하고, 변경된 서비스만 재배포하는 흐름을 경험합니다.
+1. 모놀리식 구조와 MSA 구조의 차이를 확인합니다.
+2. AWS Lambda + API Gateway로 서버리스 MSA를 배포하고, 변경된 서비스만 재배포하는 흐름을 경험합니다.
 
 ## 준비하기
 
@@ -43,13 +42,13 @@ yarn install
 
 ```text
 .
-├── monolith/                  # Step 1-2: 모놀리식 서버 (모든 API가 한 파일)
+├── monolith/                  # Step 1: 모놀리식 서버 (모든 API가 한 파일)
 │   └── server.mjs
-├── microservices/             # Step 3-4: 로컬 MSA (서비스별 분리)
+├── microservices/             # Step 2: 로컬 MSA (서비스별 분리)
 │   ├── catalog-service.mjs    #   카테고리/상품/옵션 조회
 │   ├── order-service.mjs      #   주문 생성/조회
 │   └── gateway.mjs            #   API Gateway 역할 (라우팅)
-├── lambda/                    # Step 5-8: AWS Lambda 배포용
+├── lambda/                    # Step 3-6: AWS Lambda 배포용
 │   ├── catalog-service/       #   Catalog Lambda 핸들러
 │   │   └── index.mjs
 │   └── order-service/         #   Order Lambda 핸들러 (DynamoDB 연동)
@@ -74,17 +73,14 @@ yarn install
 ```text
 Part 1 — 로컬에서 모놀리식 vs MSA 체험
   Step 1. 모놀리식 앱 실행
-  Step 2. 모놀리식 장애 체험
-  Step 3. 로컬 MSA 앱 실행
-  Step 4. 로컬 MSA 장애 격리 확인
+  Step 2. 로컬 MSA 앱 실행
 
 Part 2 — AWS에 MSA 배포
-  Step 5. AWS 로그인
-  Step 6. Lambda 배포
-  Step 7. 배포 확인 + 시드 데이터
-  Step 8. Lambda 코드 수정 후 재배포 (독립 배포)
-  Step 9. AWS에서 장애 격리 확인
-  Step 10. 리소스 정리
+  Step 3. AWS 로그인
+  Step 4. Lambda 배포
+  Step 5. 배포 확인 + 시드 데이터
+  Step 6. Lambda 코드 수정 후 재배포 (독립 배포)
+  Step 7. 리소스 정리
 ```
 
 ---
@@ -122,38 +118,7 @@ API만 확인하려면 다른 터미널에서 실행합니다.
 
 ---
 
-### Step 2. 모놀리식 장애 체험
-
-`monolith/server.mjs`를 열고 주문 API를 찾습니다.
-
-```javascript
-app.post('/api/orders', async (c) => {
-```
-
-함수의 첫 줄에 아래 코드를 추가합니다.
-
-```javascript
-  throw new Error('주문 서비스에 버그 발생!');
-```
-
-파일을 저장하고 브라우저를 새로고침합니다.
-
-확인할 내용:
-
-- 주문이 실패합니다.
-- **메뉴 조회도 안 됩니다** — 주문과 관계없는 기능까지 같이 죽었습니다.
-- 하나의 프로세스에 모든 기능이 묶여 있기 때문입니다.
-
-확인이 끝나면 추가한 `throw` 줄을 삭제하고 서버를 재시작합니다.
-
-```bash
-# Ctrl+C로 종료 후
-yarn monolith
-```
-
----
-
-### Step 3. 로컬 MSA 앱 실행
+### Step 2. 로컬 MSA 앱 실행
 
 MSA 모드에서는 Catalog, Order, Gateway, Frontend가 각각 따로 실행됩니다.
 
@@ -179,48 +144,9 @@ yarn msa
 
 ---
 
-### Step 4. 로컬 MSA 장애 격리 확인
-
-`microservices/order-service.mjs`의 handler 시작 부분에 에러를 넣습니다.
-
-```javascript
-throw new Error('Order Service 장애 발생!');
-```
-
-저장 후 `Ctrl+C`로 종료하고 다시 실행합니다.
-
-```bash
-yarn msa
-```
-
-Catalog API를 확인합니다.
-
-```bash
-curl http://localhost:4000/api/catalog/categories
-curl http://localhost:4000/api/catalog/items
-```
-
-Order API를 확인합니다.
-
-```bash
-curl -X POST http://localhost:4000/api/orders \
-  -H "Content-Type: application/json" \
-  -d '{"totalPrice":4500,"items":[{"itemId":1,"quantity":1,"options":[{"optionId":1,"labels":["HOT"]}]}]}'
-```
-
-확인할 내용:
-
-- **Catalog API는 정상** 응답합니다.
-- **Order API만 실패**합니다.
-- Step 2에서는 하나가 죽으니 전부 죽었는데, MSA에서는 장애가 해당 서비스에만 한정됩니다.
-
-확인이 끝나면 에러 코드를 삭제합니다.
-
----
-
 ## Part 2 — AWS에 MSA 배포
 
-### Step 5. AWS 로그인
+### Step 3. AWS 로그인
 
 진행자가 배포한 Access Key로 AWS CLI를 설정합니다.
 
@@ -256,7 +182,7 @@ aws sts get-caller-identity
 
 ---
 
-### Step 6. Lambda 배포
+### Step 4. Lambda 배포
 
 배포 스크립트를 실행합니다. 스크립트가 IAM 사용자 이름(예: `msa-student-07`)을 자동 감지하여 **본인 전용 스택**(`msa-coffee-student-07`)을 생성합니다. 다른 학생과 충돌하지 않습니다.
 
@@ -288,7 +214,7 @@ aws sts get-caller-identity
 
 ---
 
-### Step 7. 배포 확인 + 시드 데이터
+### Step 5. 배포 확인 + 시드 데이터
 
 API URL을 환경 변수로 저장합니다.
 
@@ -331,7 +257,7 @@ curl -X POST "$API_URL/api/orders" \
 
 ---
 
-### Step 8. Lambda 코드 수정 후 재배포 (독립 배포)
+### Step 6. Lambda 코드 수정 후 재배포 (독립 배포)
 
 `lambda/order-service/index.mjs`를 열고 주문 성공 응답을 수정합니다.
 
@@ -371,48 +297,7 @@ curl -X POST "$API_URL/api/orders" \
 
 ---
 
-### Step 9. AWS에서 장애 격리 확인
-
-`lambda/order-service/index.mjs`의 handler 함수 맨 첫 줄에 에러를 넣습니다.
-
-```javascript
-throw new Error('Order Service 장애 발생!');
-```
-
-재배포합니다.
-
-```bash
-./scripts/04-deploy.sh
-```
-
-Catalog API와 Order API를 각각 확인합니다.
-
-```bash
-# Catalog — 정상! ✅
-curl "$API_URL/api/catalog/categories"
-curl "$API_URL/api/catalog/items"
-
-# Order — 에러! ❌
-curl -X POST "$API_URL/api/orders" \
-  -H "Content-Type: application/json" \
-  -d '{"totalPrice":4500,"items":[{"itemId":1,"quantity":1,"options":[{"optionId":1,"labels":["HOT"]}]}]}'
-```
-
-확인할 내용:
-
-- **Catalog API는 정상**입니다.
-- **Order API만 실패**합니다.
-- Step 2에서는 모놀리식이라 전부 죽었지만, Lambda로 분리하니 장애가 격리됩니다.
-
-확인이 끝나면 에러 코드를 삭제하고 복구합니다.
-
-```bash
-./scripts/04-deploy.sh
-```
-
----
-
-### Step 10. 리소스 정리
+### Step 7. 리소스 정리
 
 실습이 끝나면 본인 스택의 AWS 리소스를 정리합니다.
 
