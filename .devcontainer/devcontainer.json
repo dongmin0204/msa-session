@@ -18,7 +18,7 @@
       }
     }
   },
-  "postCreateCommand": "corepack enable && yarn install && echo '✅ 환경 준비 완료! GUIDE.md를 열어 실습을 시작하세요.'",
+  "postCreateCommand": "./scripts/setup-codespaces.sh",
   "forwardPorts": [5173, 3001, 3002, 4000],
   "portsAttributes": {
     "5173": { "label": "Frontend" },

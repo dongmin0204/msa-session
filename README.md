@@ -18,6 +18,14 @@
 
 Codespaces를 사용하면 Node.js, AWS CLI, SAM CLI가 포함된 개발 환경에서 바로 시작할 수 있습니다.
 
+Codespace가 처음 열릴 때 아래 스크립트가 자동 실행되어 Yarn, AWS CLI, SAM CLI, 프로젝트 의존성을 준비합니다.
+
+```bash
+./scripts/setup-codespaces.sh
+```
+
+자동 설치가 실패했거나 Codespace를 재빌드한 뒤 도구를 다시 확인하고 싶으면 같은 명령을 터미널에서 직접 실행하세요.
+
 ### 로컬에서 실행하기
 
 ```bash
@@ -29,8 +37,8 @@ yarn install
 | 도구 | 용도 |
 | --- | --- |
 | Node.js 20 | 프론트엔드와 로컬 API 서버 실행 |
-| Yarn 4 | 의존성 설치와 실행 스크립트 관리 |
-| AWS CLI | AWS 자격증명 설정 |
+| Yarn 4 | 의존성 설치와 실행 스크립트 관리. `setup-codespaces.sh`에서 Corepack으로 활성화 |
+| AWS CLI | AWS 로그인과 배포 권한 확인. `setup-codespaces.sh`에서 누락 시 설치 |
 | SAM CLI | Lambda/API Gateway 배포 |
 
 ## 프로젝트 구조
