@@ -1,46 +1,368 @@
-# ☕ AWS를 통해 MSA 맛보기
+# AWS를 통해 MSA 맛보기
 
-> 커피 주문 앱으로 배우는 모놀리식 vs 마이크로서비스 아키텍처
-> AWS Lambda + API Gateway로 직접 배포해봅니다
+커피 주문 앱으로 모놀리식 구조와 마이크로서비스 구조의 차이를 실습합니다.
 
-## 빠른 시작
+처음에는 모든 API가 하나의 Node.js 서버에서 동작하는 모놀리식 앱을 실행하고, 이후 Catalog/Order 서비스를 분리한 MSA 구조와 AWS Lambda 배포 흐름을 확인합니다.
 
-### GitHub Codespace에서 열기
+## 실습 목표
 
-[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new)
+- 모놀리식에서는 하나의 기능 장애가 전체 앱에 영향을 줄 수 있음을 확인합니다.
+- Catalog Service와 Order Service를 분리하면 독립적으로 실행, 배포, 장애 격리가 가능함을 확인합니다.
+- AWS Lambda, API Gateway, CloudFormation/SAM을 사용해 서버리스 MSA 배포 흐름을 경험합니다.
 
-Codespace가 열리면 Node.js, AWS CLI, SAM CLI가 자동 설치됩니다.
+## 준비하기
 
-### 실습 흐름
+### Codespaces에서 열기
 
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/dongmin0204/msa-session)
+
+Codespaces를 사용하면 Node.js, AWS CLI, SAM CLI가 포함된 개발 환경에서 바로 시작할 수 있습니다.
+
+### 로컬에서 실행하기
+
+```bash
+yarn install
 ```
-Step 1. yarn monolith        → 모놀리식 앱 실행, 정상 동작 확인
-Step 2. server.mjs에 버그 삽입  → 전체 앱 다운! (모놀리식의 문제)
-Step 3. sam build && sam deploy → Lambda 2개 + API Gateway 배포 (MSA!)
-Step 4. Order Lambda만 수정/재배포 → Catalog는 무중단 (독립 배포 & 장애 격리)
-Step 5. ./scripts/cleanup.sh   → AWS 리소스 정리
-```
 
-자세한 가이드는 [GUIDE.md](./GUIDE.md)를 따라 진행하세요.
+필요한 버전은 다음과 같습니다.
 
-## 구조
+| 도구 | 용도 |
+| --- | --- |
+| Node.js 20 | 프론트엔드와 로컬 API 서버 실행 |
+| Yarn 4 | 의존성 설치와 실행 스크립트 관리 |
+| AWS CLI | AWS 자격증명 설정 |
+| SAM CLI | Lambda/API Gateway 배포 |
 
-```
-├── monolith/                  # 모놀리식 서버 (모든 API가 한 파일)
+## 프로젝트 구조
+
+```text
+.
+├── monolith/                  # 모놀리식 서버: 모든 API가 한 파일에 있음
 │   └── server.mjs
-├── lambda/                    # AWS Lambda 핸들러 (MSA로 분리)
-│   ├── catalog-service/       # 카탈로그 Lambda
-│   └── order-service/         # 주문 Lambda
-├── template.yaml              # SAM 템플릿 (Lambda + API Gateway)
-├── src/                       # 프론트엔드 (tosslib 디자인 시스템)
-└── scripts/                   # 배포/정리/테스트 스크립트
+├── microservices/             # 로컬 MSA 실습용 서비스
+│   ├── catalog-service.mjs
+│   ├── order-service.mjs
+│   └── gateway.mjs
+├── lambda/                    # AWS Lambda 배포용 서비스
+│   ├── catalog-service/
+│   └── order-service/
+├── src/                       # React 프론트엔드
+├── public/                    # 상품 이미지 등 정적 파일
+├── scripts/                   # 실행, 배포, 테스트 스크립트
+├── template.yaml              # AWS SAM 템플릿
+└── GUIDE.md                   # 진행자용 상세 가이드
 ```
 
-## AWS 서비스
+## 전체 실습 순서
+
+```text
+Step 1. 모놀리식 앱 실행
+Step 2. 모놀리식 장애 체험
+Step 3. 로컬 MSA 앱 실행
+Step 4. MSA 장애 격리 확인
+Step 5. AWS Lambda 배포
+Step 6. Lambda 코드 수정 후 재배포
+Step 7. 리소스 정리
+```
+
+## Step 1. 모놀리식 앱 실행
+
+모놀리식 모드에서는 프론트엔드와 모든 API가 하나의 개발 서버에서 동작합니다.
+
+```bash
+yarn monolith
+```
+
+브라우저에서 아래 주소를 엽니다.
+
+```text
+http://localhost:5173
+```
+
+확인할 내용:
+
+- 커피, 음료, 디저트 탭이 보입니다.
+- 아메리카노를 선택해 옵션을 고를 수 있습니다.
+- 장바구니에 담고 주문할 수 있습니다.
+
+API만 빠르게 확인하려면 다른 터미널에서 실행합니다.
+
+```bash
+./scripts/test-api.sh http://localhost:5173
+```
+
+이 단계에서 백엔드는 [monolith/server.mjs](./monolith/server.mjs) 한 파일입니다. 메뉴 조회, 상품 상세 조회, 주문 생성 API가 모두 같은 프로세스 안에서 실행됩니다.
+
+## Step 2. 모놀리식 장애 체험
+
+[monolith/server.mjs](./monolith/server.mjs)에서 주문 API를 찾습니다.
+
+```javascript
+app.post('/api/orders', async (c) => {
+```
+
+함수의 첫 줄에 아래 코드를 추가합니다.
+
+```javascript
+  throw new Error('주문 서비스에 버그 발생!');
+```
+
+파일을 저장한 뒤 브라우저를 새로고침하고 주문을 시도합니다.
+
+확인할 내용:
+
+- 주문 기능이 실패합니다.
+- 같은 서버에서 실행 중인 다른 API도 영향을 받을 수 있습니다.
+- 하나의 프로세스에 여러 기능이 묶여 있으면 장애 범위가 커질 수 있습니다.
+
+확인이 끝나면 추가한 `throw new Error(...)` 줄을 삭제하고 서버를 재시작합니다.
+
+```bash
+Ctrl+C
+yarn monolith
+```
+
+## Step 3. 로컬 MSA 앱 실행
+
+MSA 모드에서는 Catalog Service, Order Service, Gateway, Frontend가 각각 따로 실행됩니다.
+
+```bash
+yarn msa
+```
+
+실행되는 구성은 다음과 같습니다.
+
+| 구성요소 | 주소 | 역할 |
+| --- | --- | --- |
+| Catalog Service | `http://localhost:3001` | 카테고리, 상품 조회 |
+| Order Service | `http://localhost:3002` | 주문 생성 |
+| API Gateway | `http://localhost:4000` | `/api/catalog/*`, `/api/orders/*` 라우팅 |
+| Frontend | `http://localhost:5173` | 사용자 화면 |
+
+브라우저에서는 이전과 동일하게 접속합니다.
+
+```text
+http://localhost:5173
+```
+
+Gateway를 기준으로 API를 테스트합니다.
+
+```bash
+./scripts/test-api.sh http://localhost:4000
+```
+
+확인할 내용:
+
+- 사용자는 같은 화면을 봅니다.
+- 내부 구조는 Catalog와 Order가 분리되어 있습니다.
+- Gateway가 요청 경로에 따라 알맞은 서비스로 전달합니다.
+
+## Step 4. MSA 장애 격리 확인
+
+[microservices/order-service.mjs](./microservices/order-service.mjs)에서 주문 API 처리 부분에 의도적으로 에러를 넣습니다.
+
+```javascript
+throw new Error('Order Service 장애 발생!');
+```
+
+저장 후 MSA 서버가 자동으로 반영되지 않으면 `Ctrl+C`로 종료하고 다시 실행합니다.
+
+```bash
+yarn msa
+```
+
+Catalog API를 확인합니다.
+
+```bash
+curl http://localhost:4000/api/catalog/categories
+curl http://localhost:4000/api/catalog/items
+```
+
+Order API를 확인합니다.
+
+```bash
+curl -X POST http://localhost:4000/api/orders \
+  -H "Content-Type: application/json" \
+  -d '{"totalPrice":4500,"items":[{"itemId":1,"quantity":1,"options":[{"optionId":1,"labels":["HOT"]}]}]}'
+```
+
+확인할 내용:
+
+- Catalog API는 정상 응답합니다.
+- Order API만 실패합니다.
+- 서비스가 분리되어 있으면 장애가 전체 기능으로 번지지 않습니다.
+
+확인이 끝나면 추가한 에러 코드를 삭제하고 다시 실행합니다.
+
+## Step 5. AWS 배포 준비
+
+AWS 배포 실습을 진행하려면 진행자가 제공한 AWS 자격증명과 Region이 필요합니다.
+
+```bash
+aws configure
+```
+
+입력값:
+
+| 항목 | 값 |
+| --- | --- |
+| AWS Access Key ID | 진행자가 제공 |
+| AWS Secret Access Key | 진행자가 제공 |
+| Default region name | `ap-northeast-2` |
+| Default output format | `json` |
+
+배포 전에 템플릿을 빌드합니다.
+
+```bash
+sam build
+```
+
+## Step 6. AWS Lambda 배포
+
+아래 명령으로 Lambda와 API Gateway를 배포합니다.
+
+```bash
+sam deploy
+```
+
+배포가 끝나면 출력에서 API Gateway URL을 확인합니다. 예시는 다음과 같습니다.
+
+```text
+https://xxxxxxxxxx.execute-api.ap-northeast-2.amazonaws.com/Prod
+```
+
+API Gateway URL을 환경 변수로 저장하면 테스트하기 편합니다.
+
+```bash
+export API_URL="https://xxxxxxxxxx.execute-api.ap-northeast-2.amazonaws.com/Prod"
+```
+
+배포된 API를 테스트합니다.
+
+```bash
+./scripts/test-api.sh "$API_URL"
+```
+
+확인할 내용:
+
+- `/api/catalog/categories`가 Catalog Lambda로 연결됩니다.
+- `/api/catalog/items`가 Catalog Lambda로 연결됩니다.
+- `/api/orders`가 Order Lambda로 연결됩니다.
+
+## Step 7. Lambda 코드 수정 후 재배포
+
+[lambda/order-service/index.mjs](./lambda/order-service/index.mjs)를 열고 주문 성공 응답을 수정합니다.
+
+기존 코드:
+
+```javascript
+return { statusCode: 200, headers, body: JSON.stringify({ orderId }) };
+```
+
+수정 코드:
+
+```javascript
+return { statusCode: 200, headers, body: JSON.stringify({ orderId, message: '주문 감사합니다!' }) };
+```
+
+다시 빌드하고 배포합니다.
+
+```bash
+sam build
+sam deploy
+```
+
+주문 API를 다시 호출합니다.
+
+```bash
+curl -X POST "$API_URL/api/orders" \
+  -H "Content-Type: application/json" \
+  -d '{"totalPrice":4500,"items":[{"itemId":1,"quantity":1,"options":[{"optionId":1,"labels":["HOT"]}]}]}'
+```
+
+확인할 내용:
+
+- 주문 응답에 `message`가 추가됩니다.
+- Catalog Lambda는 수정하지 않았으므로 카탈로그 응답은 그대로입니다.
+- 변경된 서비스만 다시 배포해도 전체 시스템이 계속 동작합니다.
+
+## Step 8. AWS에서 장애 격리 확인
+
+[lambda/order-service/index.mjs](./lambda/order-service/index.mjs)의 handler 시작 부분에 의도적 에러를 넣습니다.
+
+```javascript
+throw new Error('Order Service 장애 발생!');
+```
+
+다시 배포합니다.
+
+```bash
+sam build
+sam deploy
+```
+
+Catalog API와 Order API를 각각 확인합니다.
+
+```bash
+curl "$API_URL/api/catalog/categories"
+curl "$API_URL/api/catalog/items"
+curl -X POST "$API_URL/api/orders" \
+  -H "Content-Type: application/json" \
+  -d '{"totalPrice":4500,"items":[{"itemId":1,"quantity":1,"options":[{"optionId":1,"labels":["HOT"]}]}]}'
+```
+
+확인할 내용:
+
+- Catalog API는 정상입니다.
+- Order API만 실패합니다.
+- Lambda 단위로 분리된 서비스는 장애 격리가 가능합니다.
+
+확인이 끝나면 에러 코드를 삭제하고 복구 배포를 합니다.
+
+```bash
+sam build
+sam deploy
+```
+
+## Step 9. 정리하기
+
+실습이 끝나면 AWS 리소스를 정리합니다.
+
+```bash
+./scripts/cleanup.sh
+```
+
+삭제 대상:
+
+- Lambda 함수
+- API Gateway
+- CloudFormation Stack
+- 실습에서 생성한 관련 리소스
+
+정리 후에는 AWS 콘솔에서 CloudFormation Stack이 삭제되었는지 확인합니다.
+
+## 자주 쓰는 명령어
+
+| 명령어 | 설명 |
+| --- | --- |
+| `yarn monolith` | 모놀리식 모드 실행 |
+| `yarn msa` | 로컬 MSA 모드 실행 |
+| `yarn build` | 프론트엔드 프로덕션 빌드 |
+| `./scripts/test-api.sh http://localhost:5173` | 모놀리식 API 테스트 |
+| `./scripts/test-api.sh http://localhost:4000` | 로컬 MSA Gateway API 테스트 |
+| `sam build` | Lambda 배포 패키지 빌드 |
+| `sam deploy` | AWS 배포 |
+| `./scripts/cleanup.sh` | AWS 리소스 정리 |
+
+## 실습에서 사용하는 AWS 서비스
 
 | 서비스 | 역할 |
-|-------|------|
-| **Lambda** | Catalog Service, Order Service 각각 독립 실행 |
-| **API Gateway** | `/api/catalog/*` → Catalog Lambda, `/api/orders/*` → Order Lambda |
-| **CloudFormation** | SAM으로 인프라 일괄 생성/삭제 |
-# msa-session
+| --- | --- |
+| Lambda | Catalog Service와 Order Service 실행 |
+| API Gateway | `/api/catalog/*`, `/api/orders/*` 라우팅 |
+| CloudFormation | SAM 템플릿 기반 인프라 생성/수정/삭제 |
+| S3 | 프론트엔드 정적 파일 저장에 활용 가능 |
+| CloudFront | 정적 파일과 API를 하나의 HTTPS 엔드포인트로 제공할 때 활용 가능 |
+| DynamoDB | 주문 데이터 저장소로 확장 가능 |
+
+더 자세한 진행자용 설명은 [GUIDE.md](./GUIDE.md)를 참고하세요.
