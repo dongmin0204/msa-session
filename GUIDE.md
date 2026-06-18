@@ -12,6 +12,7 @@ Codespace가 처음 열릴 때 `.devcontainer/devcontainer.json`의 `postCreateC
 ```
 
 이 스크립트는 Yarn, AWS CLI, SAM CLI, 프로젝트 의존성을 준비합니다. 자동 설치가 실패했거나 참가자의 터미널에서 도구가 인식되지 않으면 같은 명령을 다시 실행하세요.
+AWS CLI 설치가 중간에 실패해도 스크립트가 깨진 설치를 정리하고 재설치합니다.
 
 ## Step 1. 모놀리식 앱 확인하기 (5분)
 
