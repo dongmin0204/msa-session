@@ -1,0 +1,33 @@
+{
+  "name": "MSA Coffee Hands-on",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:20",
+  "features": {
+    "ghcr.io/devcontainers/features/aws-cli:1": {},
+    "ghcr.io/customink/codespaces-features/sam-cli:1": {},
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "amazonwebservices.aws-toolkit-vscode",
+        "humao.rest-client",
+        "ms-vscode.vscode-typescript-next"
+      ],
+      "settings": {
+        "editor.formatOnSave": true
+      }
+    }
+  },
+  "postCreateCommand": "corepack enable && yarn install && echo '✅ 환경 준비 완료! GUIDE.md를 열어 실습을 시작하세요.'",
+  "forwardPorts": [5173, 3001, 3002, 4000],
+  "portsAttributes": {
+    "5173": { "label": "Frontend" },
+    "3001": { "label": "Catalog Service" },
+    "3002": { "label": "Order Service" },
+    "4000": { "label": "API Gateway" }
+  },
+  "containerEnv": {
+    "AWS_DEFAULT_REGION": "ap-northeast-2",
+    "SAM_CLI_TELEMETRY": "0"
+  }
+}
