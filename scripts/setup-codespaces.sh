@@ -265,15 +265,28 @@ install_dependencies() {
   yarn install
 }
 
+check_docker() {
+  log "Checking Docker"
+  if command_works docker; then
+    docker --version
+  else
+    echo "⚠️  Docker is not available."
+    echo "   sam build --use-container will not work."
+    echo "   Rebuild the Codespace if Docker is required."
+  fi
+}
+
 print_next_steps() {
   log "Setup complete"
-  echo "AWS_DEFAULT_REGION=${AWS_REGION}"
   echo ""
-  echo "Next commands:"
-  echo "  yarn monolith"
-  echo "  yarn msa"
-  echo "  aws configure sso"
-  echo "  aws sts get-caller-identity"
+  echo "  AWS CLI : $(aws --version 2>&1 | head -1 || echo 'not installed')"
+  echo "  SAM CLI : $(sam --version 2>/dev/null || echo 'not installed')"
+  echo "  Docker  : $(docker --version 2>/dev/null || echo 'not available')"
+  echo "  Node    : $(node --version 2>/dev/null || echo 'not installed')"
+  echo "  Yarn    : $(yarn --version 2>/dev/null || echo 'not installed')"
+  echo "  Region  : ${AWS_REGION}"
+  echo ""
+  echo "✅ GUIDE.md를 열어 실습을 시작하세요."
 }
 
 main() {
@@ -284,6 +297,7 @@ main() {
   install_sam_cli
   setup_yarn
   install_dependencies
+  check_docker
   print_next_steps
 }
 
