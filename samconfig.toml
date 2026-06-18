@@ -1,6 +1,8 @@
+version = 0.1
+
 [default.deploy.parameters]
 stack_name = "msa-coffee-hands-on"
-resolve_s3 = true
+s3_bucket = "msa-coffee-sam-artifacts-975050036618"
 s3_prefix = "msa-coffee-hands-on"
 region = "ap-northeast-2"
 capabilities = "CAPABILITY_IAM"

@@ -5,3 +5,5 @@ dist
 build
 .aws-sam
 student-keys/
+scripts/create-student-keys.sh
+scripts/delete-student-keys.sh
